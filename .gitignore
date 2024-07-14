@@ -14,7 +14,7 @@
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
+#*.dll
 
 # Fortran module files
 *.mod
@@ -23,7 +23,7 @@
 *.lai
 *.la
 *.a
-*.lib
+#*.lib
 
 # Executables
 *.exe
@@ -69,13 +69,13 @@ Saved/*
 # Compiled source files for the engine to use
 Intermediate/*
 Plugins/*/Intermediate/*
-Source/ThirdParty/EIKSDK/SDK/*
-Source/ThirdParty/EIKSDK/Samples/*
-Source/ThirdParty/EIKSDK/ThirdPartyNotices/*
-Source/ThirdParty/EIKSDK/Bin/*
-Source/ThirdParty/EIKSDK/Include/*
-Source/ThirdParty/EIKSDK/Lib/*
-Source/ThirdParty/EIKSDK/Tools/*
+#Source/ThirdParty/EIKSDK/SDK/*
+#Source/ThirdParty/EIKSDK/Samples/*
+#Source/ThirdParty/EIKSDK/ThirdPartyNotices/*
+#Source/ThirdParty/EIKSDK/Bin/*
+#Source/ThirdParty/EIKSDK/Include/*
+#Source/ThirdParty/EIKSDK/Lib/*
+#Source/ThirdParty/EIKSDK/Tools/*
 
 
 # Cache files for the editor to use
