@@ -322,6 +322,8 @@ DECLARE_DYNAMIC_DELEGATE_TwoParams(FBP_TitleFileList_Callback, bool, bWasSuccess
 DECLARE_DYNAMIC_DELEGATE_ThreeParams(FBP_HostMigration_Callback, bool, bLocalHost, const FString&, PromotedMember, const FString&, JoinAddress);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBP_FriendInviteRecievedDelegate, const FEIKUniqueNetId&, LocalUserId, const FEIKUniqueNetId&, InvitedUserId);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FBP_SessionInviteRecievedDelegate, const FString&, SessionInfo, const FString&, LocalProductId, const FString&, InvitedProductId);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEIK_OnSessionUserInviteAccepted, bool, bWasSuccesfull, const FBlueprintSessionResult&, AcceptedSession);
+
 UCLASS()
 class ONLINESUBSYSTEMEIK_API UEIK_Subsystem : public UGameInstanceSubsystem
 {
@@ -329,13 +331,7 @@ class ONLINESUBSYSTEMEIK_API UEIK_Subsystem : public UGameInstanceSubsystem
 	
 public:
 	UEIK_Subsystem();
-
-	static void EOS_CALL OnSessionInviteReceivedCallback(const EOS_Sessions_SessionInviteReceivedCallbackInfo* Data);
-
-	UFUNCTION(BlueprintCallable, Category="EOS Integration Kit || Login")
-	bool InitializeEIK();
-
-
+	
 	//Switch to Async Nodes
 	// This C++ method logs in a user to an online subsystem using their device ID and sets up a callback function to handle the login response.
 	// Documentation link: https://betide-studio.gitbook.io/eos-integration-kit/authentication/with-device-id
@@ -452,18 +448,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category="EOS Integration Kit || Friend")
 	bool ShowFriendUserInterface();
 
-	UPROPERTY(BlueprintAssignable, Category="EOS Integration Kit || Friend")
-	FBP_FriendInviteRecievedDelegate OnInviteRecieved;
-
-	UPROPERTY(BlueprintAssignable, Category="EOS Integration Kit || Friend")
-	FBP_FriendInviteRecievedDelegate OnInviteAccepted;
-	
-	UPROPERTY(BlueprintAssignable, Category="EOS Integration Kit || Friend")
-	FBP_FriendInviteRecievedDelegate OnInviteRejected;
-
-	UPROPERTY(BlueprintAssignable, Category="EOS Integration Kit || Session")
-	FBP_SessionInviteRecievedDelegate OnSessionInviteReceived;
-
 	//Stat Functions
 	UFUNCTION(BlueprintCallable, Category="EOS Integration Kit || Statistics")
 	void UpdateStats(const FBP_UpdateStat_Callback& Result, FString StatName, int32 Amount);
@@ -571,8 +555,14 @@ public:
 	FBP_GetTitleFile_Callback GetTitleFile_CallbackBP;
 
 	FOnSessionUserInviteAcceptedDelegate OnSessionUserInviteAcceptedDelegate;
+	
+	UPROPERTY(BlueprintAssignable, DisplayName="On Session User Invite Accepted")
+	FEIK_OnSessionUserInviteAccepted OnSessionUserInviteAccepted;
+	
+	
 	void OnFriendInviteAcceptedDestroySession(FName Name, bool bArg);
-	void OnSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
+	void OnSessionUserInviteAccepted12(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
+	void FuncEK_OnSessionUserInviteAccepted(bool bArg, int I, TSharedPtr<const FUniqueNetId> UniqueNetId, const FOnlineSessionSearchResult& OnlineSessionSearchResult);
 
 
 	// This is a C++ variable for storing a reference to an online session search.
