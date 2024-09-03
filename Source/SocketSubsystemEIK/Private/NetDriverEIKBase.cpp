@@ -31,13 +31,11 @@ bool UNetDriverEIKBase::IsAvailable() const
 
 bool UNetDriverEIKBase::InitBase(bool bInitAsClient, FNetworkNotify* InNotify, const FURL& URL, bool bReuseAddressAndPort, FString& Error)
 {
-	//NetDriverName = NAME_GameNetDriver;
 	if (bIsPassthrough)
 	{
 		UE_LOG(LogTemp, Verbose, TEXT("Running as pass-through"));
 		return Super::InitBase(bInitAsClient, InNotify, URL, bReuseAddressAndPort, Error);
 	}
-
 	if (!UNetDriver::InitBase(bInitAsClient, InNotify, URL, bReuseAddressAndPort, Error))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Failed to init driver base"));
@@ -82,10 +80,20 @@ bool UNetDriverEIKBase::InitBase(bool bInitAsClient, FNetworkNotify* InNotify, c
 
 	// Store our local address and set our port
 	TSharedRef<FInternetAddrEOS> EOSLocalAddress = StaticCastSharedRef<FInternetAddrEOS>(LocalAddress);
-	// Because some platforms remap ports, we will use the ID of the name of the net driver to be our channel
-	EOSLocalAddress->SetChannel(GetTypeHash(NetDriverName.ToString()));
-	// Set our net driver name so we don't accept connections across net driver types
-	EOSLocalAddress->SetSocketName(NetDriverName.ToString());
+	if(IsBeaconDriver())
+	{
+		//Till we have a better solution, we will use a hardcoded port for the beacon driver
+		EOSLocalAddress->SetSocketName(TEXT("BeaconSession"));
+		// We will also use a hardcoded channel for the beacon driver
+		EOSLocalAddress->SetChannel(71);
+	}
+	else
+	{
+		// Because some platforms remap ports, we will use the ID of the name of the net driver to be our channel
+		EOSLocalAddress->SetChannel(GetTypeHash(NetDriverName.ToString()));
+		// Set our net driver name so we don't accept connections across net driver types
+		EOSLocalAddress->SetSocketName(NetDriverName.ToString());
+	}
 
 	static_cast<FSocketEOS*>(GetSocket())->SetLocalAddress(*EOSLocalAddress);
 
@@ -226,21 +234,15 @@ ISocketSubsystem* UNetDriverEIKBase::GetSocketSubsystem()
 {
 	if (bIsPassthrough)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Getting passthrough socket subsystem"));
 		return ISocketSubsystem::Get(PLATFORM_SOCKETSUBSYSTEM);
 	}
-	else
-	{
-		UWorld* CurrentWorld = FindWorld();
-		FSocketSubsystemEIK* DefaultSocketSubsystem = static_cast<FSocketSubsystemEIK*>(ISocketSubsystem::Get(EOS_SOCKETSUBSYSTEM));
-		return DefaultSocketSubsystem->GetSocketSubsystemForWorld(CurrentWorld);
-	}
+	UWorld* CurrentWorld = FindWorld();
+	FSocketSubsystemEIK* DefaultSocketSubsystem = static_cast<FSocketSubsystemEIK*>(ISocketSubsystem::Get(EOS_SOCKETSUBSYSTEM));
+	return DefaultSocketSubsystem->GetSocketSubsystemForWorld(CurrentWorld);
 }
 
 void UNetDriverEIKBase::Shutdown()
 {
-	UE_LOG(LogTemp, Verbose, TEXT("Shutting down NetDriver"));
-
 	Super::Shutdown();
 
 	// Kill our P2P sessions now, instead of when garbage collection kicks in later
@@ -271,6 +273,28 @@ int UNetDriverEIKBase::GetClientPort()
 	return 49152;
 }
 
+bool UNetDriverEIKBase::IsBeaconDriver() const
+{
+	if (!GEngine) return false;
+
+	for (const auto &WorldContext : GEngine->GetWorldContexts())
+	{
+		if (UWorld *ItWorld = WorldContext.World())
+		{
+			for (AOnlineBeacon* Beacon : TActorRange<AOnlineBeacon>(ItWorld))
+			{
+				if (Beacon->GetNetDriver() == this)
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+	
+
 UWorld* UNetDriverEIKBase::FindWorld() const
 {
 	UWorld* MyWorld = GetWorld();
@@ -286,7 +310,6 @@ UWorld* UNetDriverEIKBase::FindWorld() const
 
 	if(!MyWorld)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("NetDriverEIKBase::FindWorld - No world found, checking all worlds"));
 		if (GEngine != nullptr)
 		{
 			for (const auto &WorldContext : GEngine->GetWorldContexts())

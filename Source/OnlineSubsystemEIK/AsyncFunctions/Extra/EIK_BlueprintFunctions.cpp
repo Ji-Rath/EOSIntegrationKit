@@ -6,6 +6,7 @@
 #include "HttpModule.h"
 #include "OnlineSessionEOS.h"
 #include "OnlineSubsystemEOS.h"
+#include "UserManagerEOS.h"
 #include "Engine/GameInstance.h"
 #include "Containers/Array.h"
 #include "EIKVoiceChat/Private/Android/AndroidEOSVoiceChatUser.h"
@@ -24,7 +25,7 @@ FString UEIK_BlueprintFunctions::GetEpicAccountId(UObject* Context)
 		{
 			return FString();
 		}
-		if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+		if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 		{
 			if(const IOnlineIdentityPtr IdentityPointerRef = SubsystemRef->GetIdentityInterface())
 			{
@@ -72,10 +73,15 @@ FEIK_CurrentSessionInfo UEIK_BlueprintFunctions::GetCurrentSessionInfo(UObject* 
 		{
 			return FEIK_CurrentSessionInfo();
 		}
-		if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+		if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 		{
 			if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
 			{
+				if(!SessionPtrRef->GetNamedSession(SessionName))
+				{
+					UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::GetCurrentSessionInfo: Session not found"));
+					return FEIK_CurrentSessionInfo();
+				}
 				FEIK_CurrentSessionInfo SessionInfo(*SessionPtrRef->GetNamedSession(SessionName));
 				return SessionInfo;
 			}
@@ -94,7 +100,7 @@ TArray<FName> UEIK_BlueprintFunctions::GetAllCurrentSessionNames(UObject* Contex
 		{
 			return TArray<FName>();
 		}
-		if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get())
+		if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK"))
 		{
 			if (FOnlineSubsystemEOS* EOSRef = static_cast<FOnlineSubsystemEOS*>(OnlineSub))
 			{
@@ -118,7 +124,7 @@ FString UEIK_BlueprintFunctions::GetProductUserID(UObject* Context)
 		{
 			return FString();
 		}
-		if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+		if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 		{
 			if(const IOnlineIdentityPtr IdentityPointerRef = SubsystemRef->GetIdentityInterface())
 			{
@@ -174,7 +180,7 @@ IVoiceChatUser* UEIK_BlueprintFunctions::GetLobbyVoiceChat(UObject* Context)
 			return nullptr;
 		}
 
-		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
+		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK");
 		if (!OnlineSub)
 		{
 			UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::GetLobbyVoiceChat: OnlineSubsystem is null"));
@@ -210,7 +216,7 @@ bool UEIK_BlueprintFunctions::MuteLobbyVoiceChat(UObject* Context, bool bMute)
 {
 	if(GetLobbyVoiceChat(Context))
 	{
-		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
+		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK");
 		if (!OnlineSub)
 		{
 			UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::MuteLobbyVoiceChat: OnlineSubsystem is null"));
@@ -234,7 +240,7 @@ bool UEIK_BlueprintFunctions::IsLobbyVoiceChatMuted(UObject* Context)
 {
 	if(GetLobbyVoiceChat(Context))
 	{
-		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
+		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK");
 		if (!OnlineSub)
 		{
 			UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::IsLobbyVoiceChatMuted: OnlineSubsystem is null"));
@@ -316,7 +322,7 @@ bool UEIK_BlueprintFunctions::SetLobbyVoiceChatInputVolume(UObject* Context, flo
 {
 	if(GetLobbyVoiceChat(Context))
 	{
-		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get();
+		IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK");
 		if (!OnlineSub)
 		{
 			UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::IsLobbyVoiceChatMuted: OnlineSubsystem is null"));
@@ -364,7 +370,7 @@ float UEIK_BlueprintFunctions::GetLobbyPlayerVoiceChatVolume(UObject* Context, F
 
 bool UEIK_BlueprintFunctions::ShowFriendsList()
 {
-	const IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get(); // Get the Online Subsystem
+	const IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get("EIK"); // Get the Online Subsystem
 	if (OnlineSubsystem != nullptr)
 	{
 		const IOnlineExternalUIPtr ExternalUI = OnlineSubsystem->GetExternalUIInterface();        
@@ -389,7 +395,7 @@ FEIKUniqueNetId UEIK_BlueprintFunctions::MakeEIKUniqueNetId(FString EpicAccountI
 	{
 		return FEIKUniqueNetId();
 	}
-	if (IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get())
+	if (IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK"))
 	{
 		if (IOnlineIdentityPtr IdentityInterface = OnlineSub->GetIdentityInterface())
 		{
@@ -409,7 +415,7 @@ FEIKUniqueNetId UEIK_BlueprintFunctions::MakeEIKUniqueNetId(FString EpicAccountI
 
 bool UEIK_BlueprintFunctions::AcceptSessionInvite(FString InviteId, FString LocalUserId, FString InviterUserId)
 {
-	if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get())
+	if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK"))
 	{
 		if (FOnlineSubsystemEOS* EOSRef = static_cast<FOnlineSubsystemEOS*>(OnlineSub))
 		{
@@ -424,7 +430,7 @@ bool UEIK_BlueprintFunctions::AcceptSessionInvite(FString InviteId, FString Loca
 
 bool UEIK_BlueprintFunctions::RejectSessionInvite(FString InviteId, FString LocalUserId)
 {
-	if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get())
+	if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK"))
 	{
 		if (FOnlineSubsystemEOS* EOSRef = static_cast<FOnlineSubsystemEOS*>(OnlineSub))
 		{
@@ -442,7 +448,7 @@ bool UEIK_BlueprintFunctions::RejectSessionInvite(FString InviteId, FString Loca
 
 bool UEIK_BlueprintFunctions::StartSession(FName SessionName)
 {
-	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
 		{
@@ -458,7 +464,7 @@ bool UEIK_BlueprintFunctions::RegisterPlayer(FName SessionName,FEIKUniqueNetId P
 	{
 		return false;
 	}
-	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
 		{
@@ -473,7 +479,7 @@ bool UEIK_BlueprintFunctions::RegisterPlayer(FName SessionName,FEIKUniqueNetId P
 
 bool UEIK_BlueprintFunctions::UnRegisterPlayer(FName SessionName, FEIKUniqueNetId PlayerId)
 {
-	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
 		{
@@ -488,7 +494,7 @@ bool UEIK_BlueprintFunctions::UnRegisterPlayer(FName SessionName, FEIKUniqueNetI
 
 bool UEIK_BlueprintFunctions::EndSession(FName SessionName)
 {
-	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
 		{
@@ -507,7 +513,7 @@ bool UEIK_BlueprintFunctions::EndSession(FName SessionName)
 
 bool UEIK_BlueprintFunctions::IsInSession(FName SessionName,FEIKUniqueNetId PlayerId)
 {
-	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
 		{
@@ -520,7 +526,7 @@ bool UEIK_BlueprintFunctions::IsInSession(FName SessionName,FEIKUniqueNetId Play
 FString UEIK_BlueprintFunctions::GetPlayerNickname(const int32 LocalUserNum)
 {
 	FString Nickname;
-	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineIdentityPtr IdentityPointerRef = SubsystemRef->GetIdentityInterface())
 		{
@@ -542,7 +548,7 @@ FString UEIK_BlueprintFunctions::GetPlayerNickname(const int32 LocalUserNum)
 
 EEIK_LoginStatus UEIK_BlueprintFunctions::GetLoginStatus(const int32 LocalUserNum)
 {
-	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get())
+	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineIdentityPtr IdentityPointerRef = SubsystemRef->GetIdentityInterface())
 		{
@@ -586,13 +592,9 @@ FString UEIK_BlueprintFunctions::GenerateSessionCode(int32 CodeLength)
 
 bool UEIK_BlueprintFunctions::IsEIKActive()
 {
-	if (const IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get())
+	if (const IOnlineSubsystem* OnlineSubsystem = IOnlineSubsystem::Get("EIK"))
 	{
-		const FName ActiveSubsystemName = OnlineSubsystem->GetSubsystemName();
-		if(ActiveSubsystemName=="EIK")
-		{
-			return true;
-		}
+		return true;
 	}
 	return false;
 }
@@ -834,14 +836,59 @@ FDateTime UEIK_BlueprintFunctions::ConvertPosixTimeToDateTime(int64 PosixTime)
 
 FString UEIK_BlueprintFunctions::GetResolvedConnectString(FName SessionName)
 {
-	if (const IOnlineSubsystem* SubsystemRef = IOnlineSubsystem::Get())
+	if (const IOnlineSubsystem* SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
 		{
 			FString ConnectString;
 			SessionPtrRef->GetResolvedConnectString(SessionName, ConnectString);
+			if(ConnectString.Contains(":GameSession:97"))
+			{
+				ConnectString = ConnectString.Replace(TEXT(":GameSession:97"), TEXT(":GameNetDriver:26"));
+			}
 			return ConnectString;
 		}
 	}
 	return FString();
+}
+
+bool UEIK_BlueprintFunctions::GetAutoLoginAttemptedStatus()
+{
+	if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK"))
+	{
+		if (FOnlineSubsystemEOS* EOSRef = static_cast<FOnlineSubsystemEOS*>(OnlineSub))
+		{
+			if(EOSRef->UserManager)
+			{
+				return EOSRef->UserManager->bAutoLoginAttempted;
+			}
+		}
+	}
+	UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::GetAutoLoginAttemptedStatus: OnlineSubsystem is null"));
+	return false;
+}
+
+bool UEIK_BlueprintFunctions::GetAutoLoginInProgressStatus()
+{
+	if(	IOnlineSubsystem* OnlineSub = IOnlineSubsystem::Get("EIK"))
+	{
+		if (FOnlineSubsystemEOS* EOSRef = static_cast<FOnlineSubsystemEOS*>(OnlineSub))
+		{
+			if(EOSRef->UserManager)
+			{
+				return EOSRef->UserManager->bAutoLoginInProgress;
+			}
+		}
+	}
+	UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::GetAutoLoginInProgressStatus: OnlineSubsystem is null"));
+	return false;
+}
+
+FString UEIK_BlueprintFunctions::GetEnvironmentVariable(const FString& EnvVariableName)
+{
+	if(EnvVariableName.IsEmpty())
+	{
+		return FString();
+	}
+	return FPlatformMisc::GetEnvironmentVariable(*EnvVariableName);
 }

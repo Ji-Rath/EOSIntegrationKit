@@ -629,7 +629,6 @@ EEIK_EExternalCredentialType FUserManagerEOS::GetExternalCredentialType(const FS
 		UE_LOG(LogEIK, Error, TEXT("Enum not found in GetExternalCredentialType! Type: %s"), *Type);
 		return EEIK_EExternalCredentialType::EIK_ECT_EPIC; // Return a default value or handle error
 	}
-	UE_LOG(LogEIK, Error, TEXT("Main GetNameSafe: %s"), *GetNameSafe(EnumPtr->GetOuter()));
 	int32 EnumValue = EnumPtr->GetValueByName(FName(*Type));
 	if (EnumValue == INDEX_NONE)
 	{
@@ -681,8 +680,14 @@ bool FUserManagerEOS::Login(int32 LocalUserNum, const FOnlineAccountCredentials&
 		}
 		if(BrokenTypeString[0] == "eas")
 		{
-			UE_LOG(LogEIK, Log, TEXT("Login using EIK called. Login Method: %s  UseEas: true and ExternalAuth: %s"), *BrokenTypeString[1], *BrokenTypeString[2]);
-			//LoginViaAuthInterface(LocalUserNum, AccountCredentials, GetExternalCredentialType(BrokenTypeString[2]), GetLoginCredentialType(BrokenTypeString[1]));
+			if(BrokenTypeString.Num() > 2)
+			{
+				UE_LOG(LogEIK, Log, TEXT("Login using EIK called. Login Method: %s  UseEas: true and ExternalAuth: %s"), *BrokenTypeString[1], *BrokenTypeString[2]);
+			}
+			else if(BrokenTypeString.Num() > 1)
+			{
+				UE_LOG(LogEIK, Log, TEXT("Login using EIK called. Login Method: %s  UseEas: true"), *BrokenTypeString[1]);
+			}
 			LoginViaAuthInterface(LocalUserNum, AccountCredentials);
 			return true;
 		}
@@ -860,8 +865,19 @@ void FUserManagerEOS::LoginViaAuthInterface(int32 LocalUserNum, const FOnlineAcc
 	EEIK_ELoginCredentialType LoginCredentialType = EEIK_ELoginCredentialType::EIK_LCT_AccountPortal;
 	if(AccountCredentials.Type.ParseIntoArray(BrokenTypeString, TEXT("_+_"), true) > 0)
 	{
-		ExternalCredentialType = GetExternalCredentialType(BrokenTypeString[2]);
-		LoginCredentialType = GetLoginCredentialType(BrokenTypeString[1]);
+		if(BrokenTypeString.Num() > 2)
+		{
+			ExternalCredentialType = GetExternalCredentialType(BrokenTypeString[2]);
+			LoginCredentialType = GetLoginCredentialType(BrokenTypeString[1]);
+		}
+		else if(BrokenTypeString.Num() > 1)
+		{
+			LoginCredentialType = GetLoginCredentialType(BrokenTypeString[1]);
+		}
+		else
+		{
+			UE_LOG(LogEIK, Error, TEXT("Failed to parse AccountCredentials.Type into BrokenTypeString"));
+		}
 	}
 	else
 	{
@@ -993,7 +1009,7 @@ void FUserManagerEOS::LoginViaConnectInterfaceCallback(const EOS_Connect_LoginCa
 		}
 		else if(Data->ResultCode == EOS_EResult::EOS_NotFound)
 		{
-			if(UserManager->LocalUserNumToLastLoginCredentials[0].Get().Type == "deviceid")
+			if(UserManager->LocalUserNumToLastLoginCredentials[0].Get().Type == "noeas_+_EIK_ECT_DEVICEID_ACCESS_TOKEN")
 			{
 				UserManager->CreateDeviceID(UserManager->LocalUserNumToLastLoginCredentials[0].Get());
 			}
@@ -1616,7 +1632,6 @@ bool FUserManagerEOS::AutoLoginUsingSettings(int32 LocalUserNum)
 	UWorld* World;
 	if(GEngine)
 	{
-		UE_LOG(LogEIK, Verbose, TEXT("GEngine is valid"));
 		World = GEngine->GetWorldContexts()[0].World();
 		if(World)
 		{
@@ -1673,6 +1688,7 @@ bool FUserManagerEOS::AutoLoginUsingSettings(int32 LocalUserNum)
 			TempDetails.Type = "eas_+_EIK_LCT_PersistentAuth_+_EIK_ECT_EPIC";
 			Login(0,TempDetails);
 			bAutoLoginAttempted = true;
+			bAutoLoginInProgress = true;
 			return true;
 			break;
 		case AutoLogin_DeviceIdLogin:
@@ -1691,6 +1707,8 @@ bool FUserManagerEOS::AutoLoginUsingSettings(int32 LocalUserNum)
 			return true;
 			break;
 		case AutoLogin_PlatformLogin:
+			bAutoLoginAttempted = true;
+			bAutoLoginInProgress = false;
 			break;
 /*		case AutoLogin_OculusLogin:
 #if SUPPORTOCULUSPLATFORM
@@ -2145,12 +2163,10 @@ void FUserManagerEOS::ResolveUniqueNetIds(const TArray<EOS_ProductUserId>& Produ
 	for (const EOS_ProductUserId& ProductUserId : ProductUserIds)
 	{
 		EOS_EpicAccountId EpicAccountId;
-
 		// We check first if the Product User Id has already been queried, which would allow us to retrieve its Epic Account Id directly
 		if (GetEpicAccountIdFromProductUserId(ProductUserId, EpicAccountId))
 		{
 			const FUniqueNetIdEOSRef UniqueNetId = FUniqueNetIdEOSRegistry::FindOrAdd(EpicAccountId, ProductUserId).ToSharedRef();
-
 			ResolvedUniqueNetIds.Add(ProductUserId, UniqueNetId);
 		}
 		else
@@ -2159,6 +2175,7 @@ void FUserManagerEOS::ResolveUniqueNetIds(const TArray<EOS_ProductUserId>& Produ
 			ProductUserIdsToResolve.Add(ProductUserId);
 		}
 	}
+	
 
 	if (!ProductUserIdsToResolve.IsEmpty())
 	{
