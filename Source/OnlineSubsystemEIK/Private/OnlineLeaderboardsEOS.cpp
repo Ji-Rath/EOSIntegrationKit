@@ -171,7 +171,7 @@ bool FOnlineLeaderboardsEOS::ReadLeaderboards(const TArray<FUniqueNetIdRef>& Pla
 		}
 
 		// Manually build the ranks by sorting and then assigning rank values
-		FName SortedColumn = QueryContext->ReadObject->SortedColumn;
+		FString SortedColumn = QueryContext->ReadObject->SortedColumn;
 		QueryContext->ReadObject->Rows.Sort([SortedColumn](const FOnlineStatsRow& RowA, const FOnlineStatsRow& RowB)
 		{
 			const FVariantData& ValueA = RowA.Columns[SortedColumn];

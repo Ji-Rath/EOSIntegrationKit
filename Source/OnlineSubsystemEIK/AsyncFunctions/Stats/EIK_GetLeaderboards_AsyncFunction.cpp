@@ -87,7 +87,7 @@ void UEIK_GetLeaderboards_AsyncFunction::OnGetLeaderboardCompleted(bool bWasSucc
 		for (auto Row : LeaderboardRead->Rows)
 		{
 			int32 Score;
-			Row.Columns.Find("None")->GetValue(Score);
+			Row.Columns.Find(FName("None"))->GetValue(Score);
 			FEIKLeaderboardValue LocalRow;
 			LocalRow.Rank = Row.Rank;
 			LocalRow.Score = Score;
