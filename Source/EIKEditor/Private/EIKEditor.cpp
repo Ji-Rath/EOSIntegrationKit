@@ -11,6 +11,7 @@
 #include "ILauncherServicesModule.h"
 #include "ITargetDeviceServicesModule.h"
 #include "EosIconStyle.h"
+#include "Misc/Paths.h"
 #include "ISettingsModule.h"
 #include "Interfaces/IPluginManager.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -119,7 +120,16 @@ void FEIKEditorModule::RegisterMenuExtensions()
     FToolMenuOwnerScoped OwnerScoped(this);
  
     // Extend the "ModesToolBar" section of the main toolbar
+#if ENGINE_MAJOR_VERSION == 5
     UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar.PlayToolBar");
+#else
+    UToolMenu* ToolbarMenu = UToolMenus::Get()->ExtendMenu("LevelEditor.LevelEditorToolBar");
+#endif
+    if (!ToolbarMenu)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("ToolbarMenu not found!"));
+        return;
+    }
     FToolMenuSection& ToolbarSection = ToolbarMenu->FindOrAddSection("File");
 
     FUIAction ComboButtonAction;
@@ -130,12 +140,18 @@ void FEIKEditorModule::RegisterMenuExtensions()
         ComboButtonAction,
         FOnGetContent::CreateRaw(this, &FEIKEditorModule::GenerateMenuContent),
         LOCTEXT("MyCustomDropdown", "EOS Integration Kit"),
-        LOCTEXT("MyCustomDropdown_Tooltip", "Tooltip for my custom dropdown"),
+        LOCTEXT("MyCustomDropdown_Tooltip", "EOS Integration Kit Menu"),
+#if ENGINE_MAJOR_VERSION == 5
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "AboutScreen.EpicGamesLogo"),
+#else
+        FSlateIcon(FEditorStyle::GetStyleSetName(), "AboutScreen.EpicGames"),
+#endif
         false,
         "MyCustomDropdownName"
     );
+#if ENGINE_MAJOR_VERSION == 5
     ComboButton.StyleNameOverride = "CalloutToolbar";
+#endif
     Section.AddEntry(ComboButton);
 }
 
@@ -162,8 +178,20 @@ void FEIKEditorModule::OpenDevTool()
         return;
     }
     FString PluginRoot = EOSPlugin->GetBaseDir();
-    auto MainModulePath = FPaths::Combine(*PluginRoot, TEXT("Source/ThirdParty/EIKSDK/Tools/EOS_DevAuthTool-win32-x64-1.2.0"));
+    auto MainModulePath = FPaths::Combine(*PluginRoot, TEXT("Source/ThirdParty/EIKSDK/Tools/EOS_DevAuthTool-win32-x64-1.2.1"));
     FString DevToolPath = FPaths::Combine(*MainModulePath, TEXT("EOS_DevAuthTool.exe"));
+    if(!FPaths::FileExists(DevToolPath))
+    {
+        FString DevToolZipPath = FPaths::Combine(*PluginRoot, TEXT("Source/ThirdParty/EIKSDK/Tools/EOS_DevAuthTool-win32-x64-1.2.1.zip"));
+        if (!FPaths::FileExists(DevToolZipPath))
+        {
+            UE_LOG(LogEikEditor, Error, TEXT("DevTool zip not found at %s"), *DevToolZipPath);
+            FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("DevToolZipNotFound", "DevTool zip not found. Make sure devtool is downloaded and extracted at Source/ThirdParty/EIKSDK/Tools/EOS_DevAuthTool-win32-x64-1.2.1"));
+            return;
+        }
+        FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("DevToolNotExtracted", "DevTool not extracted. Extract the devtool zip at Source/ThirdParty/EIKSDK/Tools/EOS_DevAuthTool-win32-x64-1.2.1"));
+        return;
+    }
     FString DevToolArgs = TEXT("");
     FPlatformProcess::CreateProc(*DevToolPath, *DevToolArgs, true, false, false, nullptr, 0, nullptr, nullptr);
 }
@@ -176,14 +204,22 @@ TSharedRef<SWidget> FEIKEditorModule::GenerateMenuContent()
     MenuBuilder.AddMenuEntry(
         LOCTEXT("Option2", "Epic DevPortal"),
         LOCTEXT("Option2_Tooltip", "Open the Epic's DevPortal in the browser"),
+#if ENGINE_MAJOR_VERSION == 5
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.OpenInBrowser"),
+#else
+        FSlateIcon(FEditorStyle::GetStyleSetName(), "ContentBrowser.ImportIcon"),
+#endif
         FUIAction(FExecuteAction::CreateRaw(this, &FEIKEditorModule::OpenDevPortal))
     );
     
     MenuBuilder.AddMenuEntry(
     LOCTEXT("Option3", "Launch DevTool"),
     LOCTEXT("Option3_Tooltip", "Open the Epic's DevPortal in the browser"),
+#if ENGINE_MAJOR_VERSION == 5
     FSlateIcon(FAppStyle::GetAppStyleSetName(), "DeveloperTools.MenuIcon"),
+#else
+    FSlateIcon(FEditorStyle::GetStyleSetName(), "DeveloperTools.MenuIcon"),
+#endif
     FUIAction(FExecuteAction::CreateRaw(this, &FEIKEditorModule::OpenDevTool))
 );
 
@@ -192,7 +228,11 @@ TSharedRef<SWidget> FEIKEditorModule::GenerateMenuContent()
     MenuBuilder.AddMenuEntry(
         LOCTEXT("Option1", "Package and Deploy"),
         LOCTEXT("Option1_Tooltip", "Package and deploy the game to Epic Games"),
-        FSlateIcon(FAppStyle::GetAppStyleSetName(), "PlayWorld.RepeatLastLaunch"),
+#if ENGINE_MAJOR_VERSION == 5
+FSlateIcon(FAppStyle::GetAppStyleSetName(), "PlayWorld.RepeatLastLaunch"),
+#else
+        FSlateIcon(FEditorStyle::GetStyleSetName(), "PlayWorld.RepeatLastLaunch"),
+#endif
         FUIAction(FExecuteAction::CreateRaw(this, &FEIKEditorModule::OnPackageAndDeploySelected))
     );
 
@@ -200,7 +240,11 @@ TSharedRef<SWidget> FEIKEditorModule::GenerateMenuContent()
     MenuBuilder.AddMenuEntry(
         LOCTEXT("Option4", "Create/Reset Packaging Profile"),
         LOCTEXT("Option4_Tooltip", "Create or reset the packaging profile"),
+#if ENGINE_MAJOR_VERSION == 5
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "MainFrame.PackageProject"),
+#else
+        FSlateIcon(FEditorStyle::GetStyleSetName(), "MainFrame.PackageProject"),
+#endif
         FUIAction(FExecuteAction::CreateLambda([]
         {
             UEIKSettings* Settings = GetMutableDefault<UEIKSettings>();
@@ -231,7 +275,11 @@ TSharedRef<SWidget> FEIKEditorModule::GenerateMenuContent()
     MenuBuilder.AddMenuEntry(
         LOCTEXT("Settings", "Settings"),
         LOCTEXT("Settings_Tooltip", "Open the plugin settings"),
+#if ENGINE_MAJOR_VERSION == 5
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "SourceControl.Actions.ChangeSettings"),
+#else
+        FSlateIcon(FEditorStyle::GetStyleSetName(), "SourceControl.Actions.ChangeSettings"),
+#endif
         FUIAction(FExecuteAction::CreateLambda([]
         {
             FModuleManager::LoadModuleChecked<ISettingsModule>("Settings").ShowViewer("Project", "Game", "Online Subsystem EIK");
@@ -241,7 +289,11 @@ TSharedRef<SWidget> FEIKEditorModule::GenerateMenuContent()
     MenuBuilder.AddMenuEntry(
     LOCTEXT("Documentation", "Documentation"),
     LOCTEXT("PluginDocumentation_Tooltip", "Open the plugin documentation"),
+#if ENGINE_MAJOR_VERSION == 5
     FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Documentation"),
+#else
+    FSlateIcon(FEditorStyle::GetStyleSetName(), "GraphEditor.GoToDocumentation"),
+#endif
     FUIAction(FExecuteAction::CreateLambda([]
     {
         UKismetSystemLibrary::LaunchURL("eik.betide.studio");
@@ -251,7 +303,11 @@ TSharedRef<SWidget> FEIKEditorModule::GenerateMenuContent()
     MenuBuilder.AddMenuEntry(
         LOCTEXT("Marketplace", "Marketplace"),
         LOCTEXT("PluginMarketplace_Tooltip", "Open the plugin marketplace page"),
+#if ENGINE_MAJOR_VERSION == 5
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "MainFrame.OpenMarketplace"),
+#else
+        FSlateIcon(FEditorStyle::GetStyleSetName(), "LevelEditor.OpenMarketplace"),
+#endif
         FUIAction(FExecuteAction::CreateLambda([]
         {
             UKismetSystemLibrary::LaunchURL("https://www.unrealengine.com/marketplace/en-US/profile/Betide+Studio");
@@ -398,4 +454,4 @@ void FEIKEditorModule::OnPackageAndDeploySelected()
 
 #undef LOCTEXT_NAMESPACE
 
-IMPLEMENT_MODULE(FEIKEditorModule, EikEditor)
+IMPLEMENT_MODULE(FEIKEditorModule, EIKEditor)
