@@ -30,8 +30,7 @@ public:
 	                                                           bool bUsesPresence = false,
 	                                                           bool bIsLANMatch = false,
 	                                                           bool bIsDedicatedServer = false,
-	                                                           bool bIsUseLobbiesIfAvailable = true,
-	                                                           bool bIsUseLobbiesVoiceChatIfAvailable = false,
+	                                                           bool bIsLobbySession = false,
 	                                                           int32 NumberOfPublicConnections = 10,
 	                                                           int32 NumberOfPrivateConnections = 10);
 
@@ -48,9 +47,8 @@ public:
 	int32 Var_NumberOfPublicConnections;
 	int32 Var_NumberOfPrivateConnections;
 	FName Var_SessionName;
-	bool Var_bIsUseLobbiesIfAvailable;
-	bool Var_bIsUseLobbiesVoiceChatIfAvailable;
 	bool Var_bIsLanMatch;
+	bool Var_bIsLobbySession;
 
 	void OnUpdateSessionComplete(FName Name, bool bArg);
 	virtual void Activate() override;

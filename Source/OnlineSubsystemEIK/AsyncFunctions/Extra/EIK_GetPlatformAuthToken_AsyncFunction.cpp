@@ -25,7 +25,11 @@ void UEIK_GetPlatformAuthToken_AsyncFunction::OnGetPlatformAuthTokenComplete(int
 		OnFailure.Broadcast(ExternalAuthToken.TokenString);
 	}
 	SetReadyToDestroy();
+#if ENGINE_MAJOR_VERSION == 5
 	MarkAsGarbage();
+#else
+	MarkPendingKill();
+#endif
 }
 
 void UEIK_GetPlatformAuthToken_AsyncFunction::Activate()
@@ -37,13 +41,30 @@ void UEIK_GetPlatformAuthToken_AsyncFunction::Activate()
 		{
 			if(FUserManagerEOS* UserManager = EOSRef->UserManager.Get())
 			{
+				UE_LOG(LogTemp, Warning, TEXT("UserManager is valid"));
 				FUserManagerEOS::FOnGetLinkedAccountAuthTokenCompleteDelegate Delegate = FUserManagerEOS::FOnGetLinkedAccountAuthTokenCompleteDelegate::CreateUObject(this, &UEIK_GetPlatformAuthToken_AsyncFunction::OnGetPlatformAuthTokenComplete);
 				UserManager->GetPlatformAuthToken(0,Delegate);
 				return;
 			}
+			else
+			{
+				UE_LOG(LogTemp, Error, TEXT("UserManager is not valid"));
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("EOS Subsystem is not valid"));
 		}
 	}
-	
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("OnlineSubsystem is not valid"));
+	}
+	OnFailure.Broadcast("");
 	SetReadyToDestroy();
+#if ENGINE_MAJOR_VERSION == 5
 	MarkAsGarbage();
+#else
+	MarkPendingKill();
+#endif
 }

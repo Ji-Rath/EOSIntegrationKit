@@ -68,6 +68,7 @@ public:
 #if EIKDISCORDACTIVE
 		return DiscordGameModule && DiscordGameModule->IsDiscordSDKLoaded();
 #else
+		UE_LOG(LogTemp, Warning, TEXT("Discord SDK Not Loaded"));
 		return false;
 #endif
 	}
@@ -81,13 +82,78 @@ public:
 	 *
 	 * @return TRUE if we have a connection to Discord, else FALSE
 	 */
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Discord")
 	bool IsDiscordRunning() const
 	{
 #if EIKDISCORDACTIVE
 		return DiscordCorePtr != nullptr;
 #else
 		return false;
+#endif
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Discord")
+	FString GetDiscordDisplayName()
+	{
+#if EIKDISCORDACTIVE
+		if(IsDiscordRunning() && IsDiscordSDKLoaded())
+		{
+			discord::User CurrentUser;
+			auto Rsult = DiscordCore().UserManager().GetCurrentUser(&CurrentUser);
+			if(Rsult == discord::Result::Ok)
+			{
+				return UTF8_TO_TCHAR(CurrentUser.GetUsername());
+			}
+			return TEXT("Failed to get Discord User");
+		}
+		return TEXT("Discord is not running");
+#else
+		return TEXT("Discord setup files are not included in the project");
+#endif
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Discord")
+	int64 GetDiscordUserId()
+	{
+#if EIKDISCORDACTIVE
+		if(IsDiscordRunning() && IsDiscordSDKLoaded())
+		{
+			discord::User CurrentUser;
+			auto Rsult = DiscordCore().UserManager().GetCurrentUser(&CurrentUser);
+			if(Rsult == discord::Result::Ok)
+			{
+				return CurrentUser.GetId();
+			}
+			UE_LOG(LogDiscord, Error, TEXT("Failed to get Discord Auth Token due to error: %d"), static_cast<int32>(Rsult));
+			return -1;
+		}
+		return -1;
+#else
+		return -1;
+#endif
+	}
+
+	UFUNCTION(BlueprintCallable, Category = "Discord")
+	void GetDiscordAvatarUrl(FString& Hash, FString& URL)
+	{
+#if EIKDISCORDACTIVE
+		if(IsDiscordRunning() && IsDiscordSDKLoaded())
+		{
+			discord::User CurrentUser;
+			auto Rsult = DiscordCore().UserManager().GetCurrentUser(&CurrentUser);
+			if(Rsult == discord::Result::Ok)
+			{
+				Hash =  UTF8_TO_TCHAR(CurrentUser.GetAvatar());
+				URL = FString::Printf(TEXT("https://cdn.discordapp.com/avatars/%lld/%s.png"), CurrentUser.GetId(), *Hash);
+				return;
+			}
+			UE_LOG(LogDiscord, Error, TEXT("Failed to get Discord Auth Token due to error: %d"), static_cast<int32>(Rsult));
+			return;
+		}
+		return;
+#else
+		UE_LOG(LogDiscord, Error, TEXT("Discord setup files are not included in the project"));
+		return;
 #endif
 	}
 #if EIKDISCORDACTIVE
@@ -109,7 +175,7 @@ public:
 	}
 #endif
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Category = "Discord")
 	bool IsClientIdValid() const { return ClientId != 0; }
 
 protected:
@@ -174,7 +240,7 @@ protected:
 	 * To get your own Application ID:
 	 * @see https://discord.com/developers/applications
 	 */
-	UPROPERTY(Config, EditDefaultsOnly)
+	UPROPERTY(Config, EditDefaultsOnly, Category = "Discord")
 	uint64 ClientId {0};
 
 #if EIKDISCORDACTIVE
@@ -196,7 +262,7 @@ protected:
 	 * Set this too high and it will take unreasonably long for the game to connect
 	 * to Discord if/when Discord starts after the game.
 	 */
-	UPROPERTY(Config, EditDefaultsOnly)
+	UPROPERTY(Config, EditDefaultsOnly, Category = "Discord")
 	float CreateRetryTime;
 
 private:
@@ -234,9 +300,12 @@ private:
 	/** Currently-connected DiscordCore, if any */
 	discord::Core* DiscordCorePtr {nullptr};
 #endif
-
 	/** Tick delegate, if ticking is currently enabled */
+#if ENGINE_MAJOR_VERSION == 5
 	FTSTicker::FDelegateHandle TickDelegateHandle;
+#else
+	FDelegateHandle TickDelegateHandle;
+#endif
 
 	/** Amount of time (seconds) we will wait until trying to reconnect to Discord, if positive */
 	float RetryWaitRemaining {-1.f};

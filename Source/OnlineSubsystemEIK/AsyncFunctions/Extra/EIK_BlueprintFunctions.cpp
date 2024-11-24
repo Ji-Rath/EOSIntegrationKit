@@ -15,6 +15,8 @@
 #include "Interfaces/IHttpResponse.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/Base64.h"
+#include "OnlineSubsystemEIK/AsyncFunctions/Beacons/PingHost.h"
+#include "OnlineSubsystemEIK/AsyncFunctions/Beacons/PingHostObject.h"
 #include "OnlineSubsystemEIK/AsyncFunctions/Login/EIK_Login_AsyncFunction.h"
 
 FString UEIK_BlueprintFunctions::GetEpicAccountId(UObject* Context)
@@ -65,8 +67,9 @@ FString UEIK_BlueprintFunctions::GetEpicAccountId(UObject* Context)
 	}
 }
 
-FEIK_CurrentSessionInfo UEIK_BlueprintFunctions::GetCurrentSessionInfo(UObject* Context,FName SessionName)
+FEIK_CurrentSessionInfo UEIK_BlueprintFunctions::GetCurrentSessionInfo(UObject* Context, bool& bIsSessionPresent,FName SessionName)
 {
+	bIsSessionPresent = false;
 	if(Context)
 	{
 		if(!Context->GetWorld())
@@ -82,6 +85,7 @@ FEIK_CurrentSessionInfo UEIK_BlueprintFunctions::GetCurrentSessionInfo(UObject* 
 					UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::GetCurrentSessionInfo: Session not found"));
 					return FEIK_CurrentSessionInfo();
 				}
+				bIsSessionPresent = true;
 				FEIK_CurrentSessionInfo SessionInfo(*SessionPtrRef->GetNamedSession(SessionName));
 				return SessionInfo;
 			}
@@ -460,8 +464,14 @@ bool UEIK_BlueprintFunctions::StartSession(FName SessionName)
 
 bool UEIK_BlueprintFunctions::RegisterPlayer(FName SessionName,FEIKUniqueNetId PlayerId, bool bWasInvited)
 {
+	if(!PlayerId.IsValid())
+	{
+		UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::RegisterPlayer: PlayerId is not valid"));
+		return false;
+	}
 	if(!PlayerId.UniqueNetId.IsValid())
 	{
+		UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::RegisterPlayer: PlayerId.UniqueNetId is not valid"));
 		return false;
 	}
 	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
@@ -479,6 +489,17 @@ bool UEIK_BlueprintFunctions::RegisterPlayer(FName SessionName,FEIKUniqueNetId P
 
 bool UEIK_BlueprintFunctions::UnRegisterPlayer(FName SessionName, FEIKUniqueNetId PlayerId)
 {
+	if(!PlayerId.IsValid())
+	{
+		UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::UnRegisterPlayer: PlayerId is not valid"));
+		return false;
+	}
+	if(!PlayerId.UniqueNetId.IsValid())
+	{
+		UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::UnRegisterPlayer: PlayerId.UniqueNetId is not valid"));
+		return false;
+	}
+	
 	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
@@ -513,6 +534,16 @@ bool UEIK_BlueprintFunctions::EndSession(FName SessionName)
 
 bool UEIK_BlueprintFunctions::IsInSession(FName SessionName,FEIKUniqueNetId PlayerId)
 {
+	if(!PlayerId.IsValid())
+	{
+		UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::IsInSession: PlayerId is not valid"));
+		return false;
+	}
+	if(!PlayerId.UniqueNetId.IsValid())
+	{
+		UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::IsInSession: PlayerId.UniqueNetId is not valid"));
+		return false;
+	}
 	if(const IOnlineSubsystem *SubsystemRef = IOnlineSubsystem::Get("EIK"))
 	{
 		if(const IOnlineSessionPtr SessionPtrRef = SubsystemRef->GetSessionInterface())
@@ -639,7 +670,22 @@ TArray<uint8> UEIK_BlueprintFunctions::StringToByteArray(const FString& DataToCo
 
 FEIKUniqueNetId UEIK_BlueprintFunctions::GetUserUniqueID(const APlayerController* PlayerController, bool& bIsValid)
 {
+#if ENGINE_MAJOR_VERSION == 5
 	if(const APlayerState* PlayerState = PlayerController->PlayerState; !PlayerState)
+#else
+	if(!PlayerController)
+	{
+		bIsValid = false;
+		return FEIKUniqueNetId();
+	}
+	if(!PlayerController->PlayerState)
+	{
+		bIsValid = false;
+		return FEIKUniqueNetId();
+	}	
+	const APlayerState* PlayerState = PlayerController->PlayerState;
+	if(!PlayerState)
+#endif
 	{
 		bIsValid = false;
 	}
@@ -891,4 +937,48 @@ FString UEIK_BlueprintFunctions::GetEnvironmentVariable(const FString& EnvVariab
 		return FString();
 	}
 	return FPlatformMisc::GetEnvironmentVariable(*EnvVariableName);
+}
+
+bool UEIK_BlueprintFunctions::InitPingBeacon(UObject* Context, AGameModeBase* GameMode)
+{
+	if(Context)
+	{
+		if(Context->GetWorld() && GameMode)
+		{
+			if(GameMode->GetNetMode() == NM_DedicatedServer || GameMode ->GetNetMode() == NM_ListenServer)
+			{
+				APingHost* Host = Context->GetWorld()->SpawnActor<APingHost>(APingHost::StaticClass());
+				if(Host && Host->InitializeHost())
+				{
+					APingHostObject* HostObject = Context->GetWorld()->SpawnActor<APingHostObject>(APingHostObject::StaticClass());
+					if(HostObject)
+					{
+						Host->RegisterHostObject(HostObject);
+						return true;
+					}
+					else
+					{
+						UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::InitPingBeacon: HostObject is null or failed to initialize"));
+					}
+				}
+				else
+				{
+					UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::InitPingBeacon: Host is null or failed to initialize"));
+				}
+			}
+			else
+			{
+				UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::InitPingBeacon: GameMode is not a server"));
+			}
+		}
+		else
+		{
+			UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::InitPingBeacon: Context or GameMode is null"));
+		}
+	}
+	else
+	{
+		UE_LOG(LogEIK, Error, TEXT("UEIK_BlueprintFunctions::InitPingBeacon: Context is null"));
+	}
+	return false;
 }

@@ -1,6 +1,8 @@
 // Copyright (c) 2024 xist.gg
 
 #include "DiscordGame.h"
+#include "Misc/Paths.h"
+#include "Windows/WindowsPlatformProcess.h"
 #include "Modules/ModuleManager.h"
 #include "Interfaces/IPluginManager.h"  // IWYU pragma: keep
 
@@ -24,11 +26,23 @@ void FDiscordGameModule::StartupModule()
 		if ensureAlwaysMsgf(DiscordGameSDKHandle, TEXT("Expect to load Discord SDK at path [%s]"), *LibraryPath)
 		{
 			UE_LOG(LogDiscord, Log, TEXT("Loaded Discord GameSDK DLL [%s]"), *LibraryPath);
+			if(DiscordGameSDKHandle)
+			{
+				bDiscordSDKLoaded = true;
+			}
+			else
+			{
+				UE_LOG(LogDiscord, Error, TEXT("Failed to load Discord GameSDK DLL [%s]"), *LibraryPath);
+			}
 		}
 		else
 		{
 			UE_LOG(LogDiscord, Error, TEXT("Failed to load Discord GameSDK DLL [%s]"), *LibraryPath);
 		}
+	}
+	else
+	{
+		UE_LOG(LogDiscord, Error, TEXT("Failed to determine path to Discord GameSDK DLL"));
 	}
 #else
 	UE_LOG(LogDiscord, Log, TEXT("EIK: DiscordGame is disabled, skipping DiscordGame SDK load"));
