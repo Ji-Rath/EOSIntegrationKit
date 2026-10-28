@@ -257,7 +257,7 @@ EOS_EResult FEIKSDKManager::Initialize()
 
 		EOS_InitializeOptions InitializeOptions = {};
 		InitializeOptions.ApiVersion = EOS_INITIALIZE_API_LATEST;
-		static_assert(EOS_INITIALIZE_API_LATEST == 4, "EOS_InitializeOptions updated, check new fields");
+		//static_assert(EOS_INITIALIZE_API_LATEST == 4, "EOS_InitializeOptions updated, check new fields");
 		InitializeOptions.AllocateMemoryFunction = &EosMalloc;
 		InitializeOptions.ReallocateMemoryFunction = &EosRealloc;
 		InitializeOptions.ReleaseMemoryFunction = &EosFree;

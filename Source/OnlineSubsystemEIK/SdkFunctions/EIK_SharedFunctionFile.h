@@ -478,7 +478,7 @@ private:
 };
 
 UENUM(BlueprintType)
-enum EEIK_EExternalCredentialType
+enum EEIK_EExternalCredentialType : uint8 // HORROR 5.8: underlying type so UHT declares StaticEnum<>
 {
 	/**
 	 * Epic Account Services Token
@@ -1125,7 +1125,7 @@ enum EEIK_ELinkAccountFlags
 };
 
 UENUM(BlueprintType)
-enum EEIK_ELoginCredentialType
+enum EEIK_ELoginCredentialType : uint8 // HORROR 5.8: underlying type so UHT declares StaticEnum<>
 {
 	//Login using account email address and password.
 	EIK_LCT_Password = 0 UMETA(DisplayName = "Password"),

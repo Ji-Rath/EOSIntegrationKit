@@ -945,18 +945,29 @@ void FEOSVoiceChatUser::UnregisterOnVoiceChatBeforeCaptureAudioSentDelegate(FDel
 	OnVoiceChatBeforeCaptureAudioSentDelegate.Remove(Handle);
 }
 
-FDelegateHandle FEOSVoiceChatUser::RegisterOnVoiceChatBeforeRecvAudioRenderedDelegate(const FOnVoiceChatBeforeRecvAudioRenderedDelegate::FDelegate& Delegate)
+FDelegateHandle FEOSVoiceChatUser::RegisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(const FOnVoiceChatBeforeRecvAudioRenderedDelegate::FDelegate& Delegate)
 {
 	FScopeLock Lock(&BeforeRecvAudioRenderedLock);
 
 	return OnVoiceChatBeforeRecvAudioRenderedDelegate.Add(Delegate);
 }
 
-void FEOSVoiceChatUser::UnregisterOnVoiceChatBeforeRecvAudioRenderedDelegate(FDelegateHandle Handle)
+void FEOSVoiceChatUser::UnregisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(FDelegateHandle Handle)
 {
 	FScopeLock Lock(&BeforeRecvAudioRenderedLock);
 
 	OnVoiceChatBeforeRecvAudioRenderedDelegate.Remove(Handle);
+}
+
+// HORROR 5.8: shares the mixed delegate (see header)
+FDelegateHandle FEOSVoiceChatUser::RegisterOnVoiceChatBeforeRecvUnmixedAudioRenderedDelegate(const FOnVoiceChatBeforeRecvAudioRenderedDelegate::FDelegate& Delegate)
+{
+	return RegisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(Delegate);
+}
+
+void FEOSVoiceChatUser::UnregisterOnVoiceChatBeforeRecvUnmixedAudioRenderedDelegate(FDelegateHandle Handle)
+{
+	UnregisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(Handle);
 }
 
 FDelegateHandle FEOSVoiceChatUser::RegisterOnVoiceChatDataReceivedDelegate(const FOnVoiceChatDataReceivedDelegate::FDelegate& Delegate)

@@ -642,6 +642,17 @@ FOnVoiceChatCallStatsUpdatedDelegate& FEOSVoiceChat::OnVoiceChatCallStatsUpdated
 	return GetVoiceChatUser().OnVoiceChatCallStatsUpdated();
 }
 
+// HORROR 5.8: new pure virtuals
+FOnVoiceChatCallStatsUpdatedDelegate2& FEOSVoiceChat::OnVoiceChatCallStatsUpdated2()
+{
+	return GetVoiceChatUser().OnVoiceChatCallStatsUpdated2();
+}
+
+TOptional<FVoiceChatCallStats> FEOSVoiceChat::GetChannelCallStats(const FString& ChannelName) const
+{
+	return {};
+}
+
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 6
 void FEOSVoiceChat::Set3DPosition(const FString& ChannelName, const FVector& Position)
 {
@@ -822,14 +833,25 @@ void FEOSVoiceChat::UnregisterOnVoiceChatBeforeCaptureAudioSentDelegate(FDelegat
 }
 #endif
 
-FDelegateHandle FEOSVoiceChat::RegisterOnVoiceChatBeforeRecvAudioRenderedDelegate(const FOnVoiceChatBeforeRecvAudioRenderedDelegate::FDelegate& Delegate)
+// HORROR 5.8: BeforeRecvAudioRendered is now final; split into Mixed/Unmixed
+FDelegateHandle FEOSVoiceChat::RegisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(const FOnVoiceChatBeforeRecvAudioRenderedDelegate::FDelegate& Delegate)
 {
-	return GetVoiceChatUser().RegisterOnVoiceChatBeforeRecvAudioRenderedDelegate(Delegate);
+	return GetVoiceChatUser().RegisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(Delegate);
 }
 
-void FEOSVoiceChat::UnregisterOnVoiceChatBeforeRecvAudioRenderedDelegate(FDelegateHandle Handle)
+void FEOSVoiceChat::UnregisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(FDelegateHandle Handle)
 {
-	GetVoiceChatUser().UnregisterOnVoiceChatBeforeRecvAudioRenderedDelegate(Handle);
+	GetVoiceChatUser().UnregisterOnVoiceChatBeforeRecvMixedAudioRenderedDelegate(Handle);
+}
+
+FDelegateHandle FEOSVoiceChat::RegisterOnVoiceChatBeforeRecvUnmixedAudioRenderedDelegate(const FOnVoiceChatBeforeRecvAudioRenderedDelegate::FDelegate& Delegate)
+{
+	return GetVoiceChatUser().RegisterOnVoiceChatBeforeRecvUnmixedAudioRenderedDelegate(Delegate);
+}
+
+void FEOSVoiceChat::UnregisterOnVoiceChatBeforeRecvUnmixedAudioRenderedDelegate(FDelegateHandle Handle)
+{
+	GetVoiceChatUser().UnregisterOnVoiceChatBeforeRecvUnmixedAudioRenderedDelegate(Handle);
 }
 
 FDelegateHandle FEOSVoiceChat::RegisterOnVoiceChatDataReceivedDelegate(const FOnVoiceChatDataReceivedDelegate::FDelegate& Delegate)
